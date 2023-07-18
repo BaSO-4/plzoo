@@ -4,6 +4,7 @@
 
 %token TINT TBOOL TLIST TARROW
 %token <Syntax.name> VAR
+%token <Syntax.cname> NAME
 %token <int> INT
 %token TRUE FALSE
 %token PLUS
@@ -65,6 +66,7 @@ toplevel:
   | def EOF    { $1 }
   | expr EOF   { Expr $1 }
   | cmd EOF    { $1 }
+  | datadef EOF   { $3 } //EOF?
 
 cmd:
   | QUIT       { Quit }
@@ -83,11 +85,17 @@ expr:
   | MATCH expr WITH nil DARROW expr ALTERNATIVE VAR CONS VAR DARROW expr
       { Match ($2, $4, $6, $8, $10, $12) }
 
+datadef: //kako to narediš?
+  | "data" NAME EQUAL    { [] } //dilema za {}
+  | "data" NAME EQUAL    { [] }
+  | "data" NAME EQUAL    { [] }
+
 app:
     app non_app         { Apply ($1, $2) }
   | FST non_app         { Fst $2 }
   | SND non_app         { Snd $2 }
   | non_app non_app     { Apply ($1, $2) }
+  | NAME non_app       { CNAME $2 }
 
 non_app:
     VAR		        	  { Var $1 }
@@ -128,6 +136,7 @@ ty_list :
 ty_simple :
   | TBOOL	 	     { TBool }
   | TINT         	     { TInt }
+  | VAR                { VAR }
   | LPAREN ty RPAREN         { $2 }
 
 %%

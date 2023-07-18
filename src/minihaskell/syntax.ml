@@ -3,13 +3,18 @@
 (** The type of variable names. *)
 type name = string
 
+type cname = string
+
 (** MiniHaskell types. *)
 type htype =
-  | TInt (** integer [int] *)
-  | TBool (** booleans [bool] *)
-  | TTimes of htype * htype  (** Product [s * t] *)
-  | TArrow of htype * htype  (** Function type *)
-  | TList of htype (** Lists [t list] *)
+| TInt (** integer [int] *)
+| TBool (** booleans [bool] *)
+| TTimes of htype * htype  (** Product [s * t] *)
+| TArrow of htype * htype  (** Function type *)
+| TList of htype (** Lists [t list] *)
+| TData of name
+
+type datadef = (cname * htype list) list
 
 (** MiniHaskell expressions *)
 type expr =
@@ -32,14 +37,16 @@ type expr =
   | Rec of name * htype * expr (** recursion [rec x:t is e] *)
   | Nil of htype         (** empty list *)
   | Cons of expr * expr  (** cons list [e1 :: e2] *)
+  | Constr of cname      (** type *)
   | Match of expr * htype * expr * name * name * expr
       (** list decomposition [match e with [t] -> e1 | x::y -> e2] *)
 
 (** Toplevel commands *)
 type toplevel_cmd =
-  | Expr of expr       (** an expression to be evaluated *)
-  | Def of name * expr (** toplevel definition [let x = e] *)
-  | Quit               (** exit toplevel [$quit] *)
+  | Expr of expr              (** an expression to be evaluated *)
+  | Def of name * expr        (** toplevel definition [let x = e] *)
+  | DataDef of name * datadef (** type definition *)
+  | Quit                      (** exit toplevel [$quit] *)
 
 (** Conversion from a type to a string *)
 let string_of_type ty =
@@ -50,7 +57,9 @@ let string_of_type ty =
 	| TBool -> (4, "bool")
 	| TList ty -> (3, to_str 3 ty ^ " list")
 	| TTimes (ty1, ty2) -> (2, (to_str 2 ty1) ^ " * " ^ (to_str 2 ty2))
-	| TArrow (ty1, ty2) -> (1, (to_str 1 ty1) ^ " -> " ^ (to_str 0 ty2))
+  | TData ty -> (5, ty) (*what?*)
+	| TArrow (ty1, ty2) -> (1, (to_str 1 ty1
+  ) ^ " -> " ^ (to_str 0 ty2))
     in
       if m > n then str else "(" ^ str ^ ")"
   in
@@ -94,6 +103,14 @@ let string_of_expr e =
   in
     to_str (-1) e
 
+let string_of_type_def (name, constructors) =
+  let constructors_str = String.concat " | " (List.map string_of_constructor constructors) in
+  "data" cname ^ " = " ^ constructors_str
+
+let string_of_constructor (constr, args) =
+  let args_str = String.concat " " (List.map string_of_type args) in
+  constr ^ " " ^ args_str
+
 (** [subst [(x1,e1);...;(xn;en)] e] replaces in [e] free occurrences
     of variables [x1], ..., [xn] with expressions [e1], ..., [en]. *)
 let rec subst s = function
@@ -110,6 +127,7 @@ let rec subst s = function
   | If (e1, e2, e3) -> If (subst s e1, subst s e2, subst s e3)
   | Fun (x, ty, e) -> let s' = List.remove_assoc x s in Fun (x, ty, subst s' e)
   | Rec (x, ty, e) -> let s' = List.remove_assoc x s in Rec (x, ty, subst s' e)
+  | Constr (x) -> Constr x (*ok?*)
   | Match (e1, ty, e2, x, y, e3) ->
       let s' = List.remove_assoc y (List.remove_assoc x s) in
 	Match (subst s e1, ty, subst s e2, x, y, subst s' e3)
