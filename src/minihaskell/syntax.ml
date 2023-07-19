@@ -12,7 +12,7 @@ type htype =
 | TTimes of htype * htype  (** Product [s * t] *)
 | TArrow of htype * htype  (** Function type *)
 | TList of htype (** Lists [t list] *)
-| TData of name
+| TData of cname
 
 type datadef = (cname * htype list) list
 
@@ -57,7 +57,7 @@ let string_of_type ty =
 	| TBool -> (4, "bool")
 	| TList ty -> (3, to_str 3 ty ^ " list")
 	| TTimes (ty1, ty2) -> (2, (to_str 2 ty1) ^ " * " ^ (to_str 2 ty2))
-  | TData ty -> (5, ty) (*what?*)
+  | TData s -> (4, s)
 	| TArrow (ty1, ty2) -> (1, (to_str 1 ty1
   ) ^ " -> " ^ (to_str 0 ty2))
     in
@@ -77,6 +77,7 @@ let string_of_expr e =
 	| Nil ty ->         (10, "[" ^ (string_of_type ty) ^ "]")
 	| Fst e ->           (9, "fst " ^ (to_str 9 e))
 	| Snd e ->           (9, "snd " ^ (to_str 9 e))
+  | Constr c ->        (10, c)
 	| Apply (_, _) ->   (10, "<app>")
 	    (* (9, (to_str 8 e1) ^ " " ^ (to_str 9 e2)) *)
 	| Times (e1, e2) ->  (8, (to_str 7 e1) ^ " * " ^ (to_str 8 e2))
@@ -102,14 +103,14 @@ let string_of_expr e =
       if m > n then str else "(" ^ str ^ ")"
   in
     to_str (-1) e
-
-let string_of_type_def (name, constructors) =
-  let constructors_str = String.concat " | " (List.map string_of_constructor constructors) in
-  "data" cname ^ " = " ^ constructors_str
-
+    
 let string_of_constructor (constr, args) =
   let args_str = String.concat " " (List.map string_of_type args) in
   constr ^ " " ^ args_str
+
+let string_of_datadef (cname, constructors) =
+  let constructors_str = String.concat " | " (List.map string_of_constructor constructors) in
+  "data" ^ cname ^ " = " ^ constructors_str
 
 (** [subst [(x1,e1);...;(xn;en)] e] replaces in [e] free occurrences
     of variables [x1], ..., [xn] with expressions [e1], ..., [en]. *)
@@ -127,7 +128,7 @@ let rec subst s = function
   | If (e1, e2, e3) -> If (subst s e1, subst s e2, subst s e3)
   | Fun (x, ty, e) -> let s' = List.remove_assoc x s in Fun (x, ty, subst s' e)
   | Rec (x, ty, e) -> let s' = List.remove_assoc x s in Rec (x, ty, subst s' e)
-  | Constr (x) -> Constr x (*ok?*)
+  | Constr (x) -> Constr x
   | Match (e1, ty, e2, x, y, e3) ->
       let s' = List.remove_assoc y (List.remove_assoc x s) in
 	Match (subst s e1, ty, subst s e2, x, y, subst s' e3)

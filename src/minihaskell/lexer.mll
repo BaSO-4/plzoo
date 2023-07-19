@@ -12,6 +12,7 @@ rule token = parse
   | [' ' '\t']      { token lexbuf }
   | ['0'-'9']+      { INT (int_of_string(lexeme lexbuf)) }
   | "bool"          { TBOOL }
+  | "data"          { DATA }
   | "else"          { ELSE }
   | "false"         { FALSE }
   | "fst"           { FST }
@@ -47,6 +48,7 @@ rule token = parse
   | ']'             { RBRACK }
   | '|'             { ALTERNATIVE }
   | var             { VAR (lexeme lexbuf) }
+  | cname           { CNAME (lexeme lexbuf) }
   | eof             { EOF }
 
 {

@@ -7,6 +7,7 @@ and value =
   | VBool of bool
   | VNil of Syntax.htype
   | VClosure of environment * Syntax.expr
+  | VConstr of Syntax.cname * (environment * Syntax.expr) list
 
 exception Runtime_error of string
 
@@ -63,6 +64,8 @@ let rec interp env = function
       (match interp env e1 with
        | VClosure (env', Syntax.Fun (x, _, e)) ->
 	     interp ((x, ref (VClosure (env, e2)))::env') e
+       | VConstr (c, args) ->
+        VConstr (c, args @ [(env, e2)])
        | _ -> runtime_error "Function expected in application")
   | Syntax.Pair _ as e ->  VClosure (env, e)
   | Syntax.Fst e ->
@@ -78,6 +81,7 @@ let rec interp env = function
 	interp env' e
   | Syntax.Nil ty -> VNil ty
   | Syntax.Cons _ as e -> VClosure (env, e)
+  | Syntax.Constr c -> VConstr (c, [])
   | Syntax.Match (e1, _, e2, x, y, e3) ->
       (match interp env e1 with
        | VNil _ -> interp env e2

@@ -4,7 +4,7 @@
 
 %token TINT TBOOL TLIST TARROW
 %token <Syntax.name> VAR
-%token <Syntax.cname> NAME
+%token <Syntax.cname> CNAME
 %token <int> INT
 %token TRUE FALSE
 %token PLUS
@@ -18,6 +18,7 @@
 %token COLON
 %token LPAREN RPAREN
 %token LET
+%token DATA
 %token SEMICOLON2
 %token COMMA
 %token FST
@@ -48,6 +49,7 @@ file:
   | lettop                   { $1 }
   | exprtop                  { $1 }
   | cmdtop                   { $1 }
+  | datadeftop               { $1 }
 
 lettop:
   | def EOF                  { [$1] }
@@ -62,11 +64,15 @@ cmdtop:
   | cmd EOF                  { [$1] }
   | cmd SEMICOLON2 file      { $1 :: $3 }
 
+datadeftop:
+  | datadef EOF                  { [$1] }
+  | datadef SEMICOLON2 file      { $1 :: $3 }
+
 toplevel:
   | def EOF    { $1 }
   | expr EOF   { Expr $1 }
   | cmd EOF    { $1 }
-  | datadef EOF   { $3 } //EOF?
+  | datadef EOF   { $1 }
 
 cmd:
   | QUIT       { Quit }
@@ -85,26 +91,31 @@ expr:
   | MATCH expr WITH nil DARROW expr ALTERNATIVE VAR CONS VAR DARROW expr
       { Match ($2, $4, $6, $8, $10, $12) }
 
-datadef: //kako to narediš?
-  | "data" NAME EQUAL    { [] } //dilema za {}
-  | "data" NAME EQUAL    { [] }
-  | "data" NAME EQUAL    { [] }
+datadef:
+  | DATA CNAME EQUAL variants { DataDef ($2, $4) }
+
+variants:
+  | variant { [$1] }
+  | variant ALTERNATIVE variants {$1 :: $3 }
+
+variant:
+  | CNAME list(ty) {($1, $2)}
 
 app:
     app non_app         { Apply ($1, $2) }
   | FST non_app         { Fst $2 }
   | SND non_app         { Snd $2 }
   | non_app non_app     { Apply ($1, $2) }
-  | NAME non_app       { CNAME $2 }
 
 non_app:
-    VAR		        	  { Var $1 }
-  | TRUE                	  { Bool true }
-  | FALSE               	  { Bool false }
-  | INT		                  { Int $1 }
+    VAR		        	              { Var $1 }
+  | TRUE                	        { Bool true }
+  | FALSE               	        { Bool false }
+  | INT		                        { Int $1 }
   | nil                           { Nil $1 }
-  | LPAREN expr RPAREN		  { $2 }    
+  | LPAREN expr RPAREN		        { $2 }    
   | LPAREN expr COMMA expr RPAREN { Pair ($2, $4) }
+  | CNAME                         { Constr $1 }
 
 arith:
   | MINUS INT           { Int (-$2) }
@@ -136,7 +147,7 @@ ty_list :
 ty_simple :
   | TBOOL	 	     { TBool }
   | TINT         	     { TInt }
-  | VAR                { VAR }
+  | CNAME                { TData $1 }
   | LPAREN ty RPAREN         { $2 }
 
 %%
