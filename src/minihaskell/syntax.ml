@@ -12,8 +12,9 @@ type htype =
 | TTimes of htype * htype  (** Product [s * t] *)
 | TArrow of htype * htype  (** Function type *)
 | TList of htype (** Lists [t list] *)
-| TData of cname
+| TData of cname (** Type *)
 
+(** MiniHaskell data definitions *)
 type datadef = (cname * htype list) list
 
 (** MiniHaskell expressions *)
@@ -38,14 +39,14 @@ type expr =
   | Nil of htype         (** empty list *)
   | Cons of expr * expr  (** cons list [e1 :: e2] *)
   | Constr of cname      (** type *)
-  | Match of expr * htype * expr * name * name * expr
-      (** list decomposition [match e with [t] -> e1 | x::y -> e2] *)
+  | Match of expr * htype * expr * name * name * expr  (** list decomposition [match e with [t] -> e1 | x::y -> e2] *)
+  | Case of expr * ((cname * htype list) * expr) list   (** type decomposition [case e of [t1] -> e1 | ... | [tn] -> en] *)
 
 (** Toplevel commands *)
 type toplevel_cmd =
   | Expr of expr              (** an expression to be evaluated *)
   | Def of name * expr        (** toplevel definition [let x = e] *)
-  | DataDef of name * datadef (** type definition *)
+  | DataDef of cname * datadef (** type definition *)
   | Quit                      (** exit toplevel [$quit] *)
 
 (** Conversion from a type to a string *)
@@ -98,6 +99,9 @@ let string_of_expr e =
 	    (* (2, "fun " ^ x ^ " : " ^ (string_of_type ty) ^ " -> " ^ (to_str 0 e)) *)
 	| Rec (_, _, _) -> (10, "<rec>")
 	    (* (1, "rec " ^ x ^ " : " ^ (string_of_type ty) ^ " is " ^ (to_str 0 e)) *)
+  | Case (e, l) -> (3, "case " ^ (to_str 3 e) ^ " of " ^
+    String.concat " | " (List.map (fun ((c, tys), e) ->
+      "[" ^ c ^ " " ^ String.concat " " (List.map string_of_type tys) ^ "] -> " ^ to_str 3 e) l))
 
     in
       if m > n then str else "(" ^ str ^ ")"
@@ -136,3 +140,7 @@ let rec subst s = function
   | Pair (e1, e2) -> Pair (subst s e1, subst s e2)
   | Fst e -> Fst (subst s e)
   | Snd e -> Snd (subst s e)
+  | Case (e, l) ->
+      let l' = List.map (fun ((c, tys), e) ->
+        ((c, tys), subst s e)) l in
+      Case (subst s e, l')

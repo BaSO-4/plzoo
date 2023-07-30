@@ -135,3 +135,4 @@ and type_of (ctx:context) = function
 			(Syntax.string_of_type ty))
 
    | Syntax.Constr c -> type_of_constr c ctx.datadefs
+   | Syntax.Case (_, _) -> failwith "Case not implemented"

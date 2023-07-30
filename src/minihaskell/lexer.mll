@@ -23,6 +23,8 @@ rule token = parse
   | "let"           { LET }  
   | "list"          { TLIST }
   | "match"         { MATCH }
+  | "case"          { CASE }
+  | "of"            { OF }
   | "rec"           { REC }
   | "snd"           { SND }
   | "then"          { THEN }

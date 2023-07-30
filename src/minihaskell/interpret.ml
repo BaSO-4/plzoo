@@ -88,6 +88,16 @@ let rec interp env = function
        | VClosure (env', Syntax.Cons (d1, d2)) ->
 	  interp ((x,ref (VClosure(env',d1)))::(y,ref (VClosure(env',d2)))::env) e3
        | _ -> runtime_error "List expected in match")
+  | Syntax.Case (e, ((cname, types) list, action) list) ->
+      (match interp env e with
+        | VConstr (c, args) ->
+          let rec find_case = function
+            | [] -> runtime_error ("Constructor " ^ c ^ " not found")
+            | ((c', args'), action) :: l ->
+              if c = c' then interp env action
+              else find_case l
+            in find_case ((List.map (interp env) (cname, types) list), action) list
+        | _ -> runtime_error "Constructor expected in case")
 
 
 (** [print_result v] prints at most [n] nodes of the value [v]. *)

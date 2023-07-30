@@ -19,6 +19,8 @@
 %token LPAREN RPAREN
 %token LET
 %token DATA
+%token CASE
+%token OF
 %token SEMICOLON2
 %token COMMA
 %token FST
@@ -36,6 +38,7 @@
 
 %nonassoc IS
 %right DARROW
+%right TARROW
 %nonassoc ELSE
 %nonassoc EQUAL LESS
 %left PLUS MINUS
@@ -90,16 +93,24 @@ expr:
   | REC VAR COLON ty IS expr { Rec ($2, $4, $6) }
   | MATCH expr WITH nil DARROW expr ALTERNATIVE VAR CONS VAR DARROW expr
       { Match ($2, $4, $6, $8, $10, $12) }
+  | CASE expr OF case_variants { Case ($2, $4) }
 
 datadef:
-  | DATA CNAME EQUAL variants { DataDef ($2, $4) }
+  | DATA CNAME EQUAL data_variants { DataDef ($2, $4) }
 
-variants:
-  | variant { [$1] }
-  | variant ALTERNATIVE variants {$1 :: $3 }
+data_variants:
+  | data_variant { [$1] }
+  | data_variant ALTERNATIVE data_variants {$1 :: $3 }
 
-variant:
+data_variant:
   | CNAME list(ty) {($1, $2)}
+
+case_variants:
+  | case_variant { [$1] }
+  | case_variant ALTERNATIVE case_variants {$1 :: $3 }
+
+case_variant:
+  | CNAME list(ty) TARROW expr { (($1, $2), $4) }
 
 app:
     app non_app         { Apply ($1, $2) }
@@ -119,11 +130,11 @@ non_app:
 
 arith:
   | MINUS INT           { Int (-$2) }
-  | expr PLUS expr	{ Plus ($1, $3) }
-  | expr MINUS expr	{ Minus ($1, $3) }
-  | expr TIMES expr	{ Times ($1, $3) }
-  | expr DIVIDE expr	{ Divide ($1, $3) }
-  | expr MOD expr	{ Mod ($1, $3) }
+  | expr PLUS expr	    { Plus ($1, $3) }
+  | expr MINUS expr	    { Minus ($1, $3) }
+  | expr TIMES expr	    { Times ($1, $3) }
+  | expr DIVIDE expr  	{ Divide ($1, $3) }
+  | expr MOD expr	      { Mod ($1, $3) }
 
 nil: LBRACK ty RBRACK   { $2 }
 
@@ -139,15 +150,14 @@ ty_times :
   | ty_list                  { $1 }
   | ty_times TIMES ty_list   { TTimes ($1, $3) }
   
-
 ty_list :
   | ty_simple { $1 }
   | ty_list TLIST            { TList $1 }
 
 ty_simple :
-  | TBOOL	 	     { TBool }
+  | TBOOL	 	           { TBool }
   | TINT         	     { TInt }
-  | CNAME                { TData $1 }
-  | LPAREN ty RPAREN         { $2 }
+  | CNAME              { TData $1 }
+  | LPAREN ty RPAREN   { $2 }
 
 %%
