@@ -12,8 +12,10 @@ rule token = parse
   | [' ' '\t']      { token lexbuf }
   | ['0'-'9']+      { INT (int_of_string(lexeme lexbuf)) }
   | "Bool"          { TBOOL }
+  | "case"          { CASE }
   | "data"          { DATA }
   | "else"          { ELSE }
+  | "end"           { END }
   | "false"         { FALSE }
   | "fst"           { FST }
   | "fun"           { FUN }
@@ -23,7 +25,6 @@ rule token = parse
   | "let"           { LET }  
   | "list"          { TLIST }
   | "match"         { MATCH }
-  | "case"          { CASE }
   | "of"            { OF }
   | "rec"           { REC }
   | "snd"           { SND }

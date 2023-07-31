@@ -40,7 +40,9 @@ type expr =
   | Cons of expr * expr  (** cons list [e1 :: e2] *)
   | Constr of cname      (** type *)
   | Match of expr * htype * expr * name * name * expr  (** list decomposition [match e with [t] -> e1 | x::y -> e2] *)
-  | Case of expr * ((cname * htype list) * expr) list   (** type decomposition [case e of [t1] -> e1 | ... | [tn] -> en] *)
+  | Case of expr * (pattern * expr) list   (** type decomposition [case e of [t1] -> e1 | ... | [tn] -> en] *)
+
+and pattern = cname * name list
 
 (** Toplevel commands *)
 type toplevel_cmd =
@@ -99,15 +101,16 @@ let string_of_expr e =
 	    (* (2, "fun " ^ x ^ " : " ^ (string_of_type ty) ^ " -> " ^ (to_str 0 e)) *)
 	| Rec (_, _, _) -> (10, "<rec>")
 	    (* (1, "rec " ^ x ^ " : " ^ (string_of_type ty) ^ " is " ^ (to_str 0 e)) *)
-  | Case (e, l) -> (3, "case " ^ (to_str 3 e) ^ " of " ^
-    String.concat " | " (List.map (fun ((c, tys), e) ->
-      "[" ^ c ^ " " ^ String.concat " " (List.map string_of_type tys) ^ "] -> " ^ to_str 3 e) l))
-
+  | Case (e, l) ->
+     (3, "case " ^ (to_str 3 e) ^ " of " ^
+           String.concat " | "
+             (List.map (fun ((c, xs), e) -> (c ^ " " ^ String.concat " " xs) ^ " => " ^ to_str 3 e) l))
     in
       if m > n then str else "(" ^ str ^ ")"
+
   in
     to_str (-1) e
-    
+
 let string_of_constructor (constr, args) =
   let args_str = String.concat " " (List.map string_of_type args) in
   constr ^ " " ^ args_str

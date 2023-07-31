@@ -13,6 +13,14 @@ exception Runtime_error of string
 
 let runtime_error msg = raise (Runtime_error msg)
 
+let rec extend_env env xs vs =
+  match xs, vs with
+  | [], [] -> env
+  | x::xs, (env',e)::vs ->
+     extend_env ((x, ref (VClosure (env', e))) :: env) xs vs
+  | _, _ -> runtime_error "Bad pattern"
+
+
 let rec interp env = function
   | Syntax.Var x ->
       (try
@@ -88,16 +96,20 @@ let rec interp env = function
        | VClosure (env', Syntax.Cons (d1, d2)) ->
 	  interp ((x,ref (VClosure(env',d1)))::(y,ref (VClosure(env',d2)))::env) e3
        | _ -> runtime_error "List expected in match")
-  | Syntax.Case (e, ((cname, types) list, action) list) ->
-      (match interp env e with
-        | VConstr (c, args) ->
+
+  | Syntax.Case (e, cases) ->
+     (match interp env e with
+      | VConstr (c, args) ->
           let rec find_case = function
-            | [] -> runtime_error ("Constructor " ^ c ^ " not found")
-            | ((c', args'), action) :: l ->
-              if c = c' then interp env action
+            | [] -> runtime_error ("Unmatched constructor " ^ c)
+            | ((c', xs), action) :: l ->
+              if c = c' then
+                let env' = extend_env env xs args in
+                interp env' action
               else find_case l
-            in find_case ((List.map (interp env) (cname, types) list), action) list
-        | _ -> runtime_error "Constructor expected in case")
+            in find_case cases
+      | _ -> runtime_error "Constructor expected in case"
+     )
 
 
 (** [print_result v] prints at most [n] nodes of the value [v]. *)

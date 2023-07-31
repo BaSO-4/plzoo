@@ -19,8 +19,7 @@
 %token LPAREN RPAREN
 %token LET
 %token DATA
-%token CASE
-%token OF
+%token CASE OF END
 %token SEMICOLON2
 %token COMMA
 %token FST
@@ -38,7 +37,6 @@
 
 %nonassoc IS
 %right DARROW
-%right TARROW
 %nonassoc ELSE
 %nonassoc EQUAL LESS
 %left PLUS MINUS
@@ -93,7 +91,7 @@ expr:
   | REC VAR COLON ty IS expr { Rec ($2, $4, $6) }
   | MATCH expr WITH nil DARROW expr ALTERNATIVE VAR CONS VAR DARROW expr
       { Match ($2, $4, $6, $8, $10, $12) }
-  | CASE expr OF case_variants { Case ($2, $4) }
+  | CASE expr OF case_variants END { Case ($2, $4) }
 
 datadef:
   | DATA CNAME EQUAL data_variants { DataDef ($2, $4) }
@@ -110,7 +108,10 @@ case_variants:
   | case_variant ALTERNATIVE case_variants {$1 :: $3 }
 
 case_variant:
-  | CNAME list(ty) TARROW expr { (($1, $2), $4) }
+  | pattern TARROW expr { ($1, $3) }
+
+pattern:
+  | CNAME list(VAR)     { ($1, $2) }
 
 app:
     app non_app         { Apply ($1, $2) }
@@ -124,7 +125,7 @@ non_app:
   | FALSE               	        { Bool false }
   | INT		                        { Int $1 }
   | nil                           { Nil $1 }
-  | LPAREN expr RPAREN		        { $2 }    
+  | LPAREN expr RPAREN		        { $2 }
   | LPAREN expr COMMA expr RPAREN { Pair ($2, $4) }
   | CNAME                         { Constr $1 }
 
@@ -149,7 +150,7 @@ ty:
 ty_times :
   | ty_list                  { $1 }
   | ty_times TIMES ty_list   { TTimes ($1, $3) }
-  
+
 ty_list :
   | ty_simple { $1 }
   | ty_list TLIST            { TList $1 }
