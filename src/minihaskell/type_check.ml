@@ -4,12 +4,19 @@ type context = {vars: (string * Syntax.htype) list; datadefs: (Syntax.cname * Sy
 
 let empty_ctx = {vars = []; datadefs = []}
 
+(** [ty_error msg] raises exception [Type_error msg]. *)
+let type_error msg = Zoo.error ~kind:"Type error" msg
+
 let extend_var x ty ctx = {ctx with vars = (x, ty)::ctx.vars}
 
 let extend_datadef x constrs ctx = {ctx with datadefs = (x, constrs)::ctx.datadefs}
 
-(** [ty_error msg] raises exception [Type_error msg]. *)
-let type_error msg = Zoo.error ~kind:"Type error" msg
+let rec extend_ctx xs tys ctx =
+   match (xs, tys) with
+      | [], [] -> ctx
+      | x::xs', ty::tys' -> extend_ctx xs' tys' (extend_var x ty ctx)
+      | _ -> type_error "wrong number of variables in pattern"
+
 
 let rec type_of_constr c = function
    | [] -> type_error "unknown constructor %s" c
@@ -19,6 +26,17 @@ let rec type_of_constr c = function
             | None -> type_of_constr c datadefs
             | Some arg_types -> List.fold_right (fun arg_type t -> Syntax.TArrow (arg_type, t)) arg_types (Syntax.TData type_name) 
       end
+
+         
+let rec find_u u defs =
+   match defs with
+      | [] -> type_error "unknown type %s" u
+      | (cname, constrs)::datadefs -> 
+         if cname = u then
+            constrs
+         else
+            find_u u datadefs
+
 
 (** [check ctx ty e] checks that expression [e] has type [ty] in context [ctx].
     It raises [Type_error] if it does not. *)
@@ -30,6 +48,29 @@ let rec check ctx ty e =
         (Syntax.string_of_expr e)
         (Syntax.string_of_type ty')
         (Syntax.string_of_type ty)
+
+
+(* returns type of all actions or throws an error *)
+and cases_type u_def cases ctx =
+   match cases with
+      | [] -> type_error "empty case expression"
+      | ((cname, xs), action)::cases' ->
+         let xs_types = find_u cname u_def in
+         let ctx = extend_ctx xs xs_types ctx in
+         let t1 = type_of ctx action in
+         let rec rest_of_cases cases =
+            match cases with
+            | [] -> t1
+            | ((cname, xs), action)::cases' ->
+               let xs_types = find_u cname u_def in
+               let ctx' = extend_ctx xs xs_types ctx in
+               let t2 = type_of ctx' action in
+               if t1 <> t2 then
+                  type_error "case expressions have different types"
+               else
+                  rest_of_cases cases'
+         in rest_of_cases cases'
+
 
 (** [type-of ctx e] computes the type of expression [e] in context [ctx].
     It raises [Type_error] if [e] does not have a type. *)
@@ -135,4 +176,11 @@ and type_of (ctx:context) = function
 			(Syntax.string_of_type ty))
 
    | Syntax.Constr c -> type_of_constr c ctx.datadefs
-   | Syntax.Case (_, _) -> failwith "Case not implemented"
+   | Syntax.Case (e, cases) -> 
+      let t = type_of ctx e in
+      (match t with
+      | Syntax.TData u -> 
+         let u_def = find_u u ctx.datadefs in
+         let ret_type = cases_type u_def cases ctx in
+         ret_type
+      | _ -> type_error "%s cannot occur in a case expression" (Syntax.string_of_type t))
