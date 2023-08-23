@@ -55,14 +55,15 @@ and cases_type u_def cases ctx =
    match cases with
       | [] -> type_error "empty case expression"
       | ((cname, xs), action)::cases' ->
-         let xs_types = find_u cname u_def in
+         (* if cname = "" then let xs_types = [] else let xs_types = find_u cname u_def in *)
+         let xs_types = if cname = "" then [] else find_u cname u_def in
          let ctx = extend_ctx xs xs_types ctx in
          let t1 = type_of ctx action in
          let rec rest_of_cases cases =
             match cases with
             | [] -> t1
             | ((cname, xs), action)::cases' ->
-               let xs_types = find_u cname u_def in
+               let xs_types = if cname = "" then [] else find_u cname u_def in
                let ctx' = extend_ctx xs xs_types ctx in
                let t2 = type_of ctx' action in
                if t1 <> t2 then

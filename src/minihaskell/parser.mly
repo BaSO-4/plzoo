@@ -20,6 +20,7 @@
 %token LET
 %token DATA
 %token CASE OF END
+%token EMPTY
 %token SEMICOLON2
 %token COMMA
 %token FST
@@ -112,6 +113,7 @@ case_variant:
 
 pattern:
   | CNAME list(VAR)     { ($1, $2) }
+  | EMPTY               { ("", []) }
 
 app:
     app non_app         { Apply ($1, $2) }

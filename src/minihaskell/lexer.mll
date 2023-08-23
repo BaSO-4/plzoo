@@ -43,6 +43,7 @@ rule token = parse
   | '+'             { PLUS }
   | ','             { COMMA }
   | '-'             { MINUS }
+  | '_'             { EMPTY }
   | '/'             { DIVIDE }
   | ':'             { COLON }
   | '<'             { LESS }

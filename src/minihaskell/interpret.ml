@@ -106,6 +106,9 @@ let rec interp env = function
               if c = c' then
                 let env' = extend_env env xs args in
                 interp env' action
+              else if "_" = c' then
+                let env' = extend_env env xs args in
+                interp env' action
               else find_case l
             in find_case cases
       | _ -> runtime_error "Constructor expected in case"
@@ -136,6 +139,26 @@ let rec print_result n v =
 	  print_string " :: " ;
 	  print_result (n-1) (interp env e2)
      | VClosure (_, Syntax.Fun _) -> print_string "<fun>"
+     | VConstr (c, args) ->
+      print_string c;
+      if args <> [] then begin
+        print_string " (";
+        print_args n args;
+        print_string ")"
+      end
      | _ -> print_string "?"
   ) ;
+
+  and print_args n args =
+  match args with
+  | [] -> ()
+  | [(env, e)] ->
+    print_result (n-1) (interp env e)
+  | (env, e)::rest ->
+    print_result (n-1) (interp env e);
+    if rest <> [] then begin
+      print_string " (";
+      print_args n rest;
+      print_string ")"
+    end ;
   flush stdout
