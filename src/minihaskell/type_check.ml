@@ -73,6 +73,21 @@ and cases_type u_def cases ctx =
          in rest_of_cases cases'
 
 
+and find_type ty ctx =
+   match ctx.datadefs with
+   | [] -> false
+   | (cname, _)::datadefs' -> if cname = ty then true else find_type ty {ctx with datadefs = datadefs'}
+
+
+and check_function_type ty ctx = 
+   match ty with
+   | Syntax.TTimes (ty1, ty2) -> check_function_type ty1 ctx && check_function_type ty2 ctx
+   | Syntax.TArrow (ty1, ty2) -> check_function_type ty1 ctx && check_function_type ty2 ctx
+   | Syntax.TList ty1 -> check_function_type ty1 ctx
+   | Syntax.TData ty1 -> if find_type ty1 ctx then true else false
+   | _ -> true
+
+
 (** [type-of ctx e] computes the type of expression [e] in context [ctx].
     It raises [Type_error] if [e] does not have a type. *)
 and type_of (ctx:context) = function
@@ -133,7 +148,8 @@ and type_of (ctx:context) = function
 	check ctx ty e3 ; ty
 
   | Syntax.Fun (x, ty, e) ->
-     Syntax.TArrow (ty, type_of (extend_var x ty ctx) e)
+      if (check_function_type ty ctx) then Syntax.TArrow (ty, type_of (extend_var x ty ctx) e)
+      else type_error "function type is not valid"
 
   | Syntax.Rec (x, ty, e) ->
      check (extend_var x ty ctx) ty e ;

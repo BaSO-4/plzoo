@@ -111,14 +111,6 @@ let string_of_expr e =
   in
     to_str (-1) e
 
-let string_of_constructor (constr, args) =
-  let args_str = String.concat " " (List.map string_of_type args) in
-  constr ^ " " ^ args_str
-
-let string_of_datadef (cname, constructors) =
-  let constructors_str = String.concat " | " (List.map string_of_constructor constructors) in
-  "data" ^ cname ^ " = " ^ constructors_str
-
 (** [subst [(x1,e1);...;(xn;en)] e] replaces in [e] free occurrences
     of variables [x1], ..., [xn] with expressions [e1], ..., [en]. *)
 let rec subst s = function
